@@ -1,6 +1,6 @@
 # ArborFlow — High-Performance Network Processing Engine
 
-ArborFlow is a real-time network processing and security engine built in C that leverages **Advanced Data Structures** to efficiently capture, filter, and schedule network packets. It integrates network-level packet capture (**libpcap**) with Bit Vectors, vEB Trees, Concurrent Queues, and Heaps to process live traffic with high performance.
+ArborFlow is a real-time network processing and security engine built in C that leverages **Advanced Data Structures** to efficiently capture, filter, and schedule network packets. It integrates network-level packet capture (**libpcap**) with Bit Vectors, IpTries, Splay Trees, Concurrent Queues, and Heaps to process live traffic with high performance.
 
 ---
 
@@ -31,9 +31,9 @@ In the C environment, these packets are processed as raw streams of `u_char` byt
 | :--- | :--- |
 | **Capture Engine** | Networking (libpcap), OS |
 | **Queue** | Lock-Free Concurrent Queue |
-| **Gatekeeper** | Bit Vector + van Emde Boas Tree |
+| **Gatekeeper** | 4-Level IpTrie with BitVector Leafs |
 | **Scheduler** | Max Heap (Priority Queue) |
-| **Session Manager** | Splay Tree (optional/extension) |
+| **Session Manager** | Splay Tree (5-tuple keyed) |
 
 ---
 
@@ -49,6 +49,8 @@ Internet Traffic
 [ Concurrent Queue (Lock-Free) ]
        ↓
 [ Gatekeeper (Firewall Logic) ]
+       ↓
+[ Session Manager (Splay Tree Tracking) ]
        ↓
 [ Scheduler (Max Heap Priority Queue) ]
        ↓
@@ -68,13 +70,15 @@ ArborFlow/
     │   ├── capture.h
     │   ├── concurrent_q.h
     │   ├── bit_vector.h
-    │   ├── veb_tree.h
+    │   ├── ip_trie.h
+    │   ├── splay_tree.h
     │   └── gatekeeper.h
     ├── src/
     │   ├── capture.c
     │   ├── concurrent_q.c
     │   ├── bit_vector.c
-    │   ├── veb_tree.c
+    │   ├── ip_trie.c
+    │   ├── splay_tree.c
     │   └── gatekeeper.c
     ├── scheduler/
     │   ├── packet.h
@@ -90,8 +94,8 @@ ArborFlow/
 ## Features
 
 * **Real-time packet capture:** Utilizes `libpcap` for live interface sniffing.
-* **Fast filtering:** Bit Vector implementation provides $O(1)$ prefix filtering.
-* **Efficient search:** vEB Tree allows for exact IP matching in $O(\log \log U)$ time.
+* **Fast filtering:** IpTrie implementation provides $O(1)$ exact lookup over the IPv4 address space.
+* **Self-adjusting tracking:** Splay Tree provides amortized $O(1)$ access for active network sessions.
 * **High throughput:** Employs a lock-free concurrent queue to bridge capture and processing threads.
 * **Priority scheduling:** Max Heap ensures critical packets (e.g., DNS, Web) are handled first.
 
@@ -109,9 +113,12 @@ Assigns numeric priorities based on protocol and port:
 * **Others:** Priority 5 (Normal)
 
 ### 3. Gatekeeper (Firewall)
-Uses a two-layer defense. The **Bit Vector** handles fast prefix filtering, while the **vEB Tree** manages exact IP blacklisting. Packets are marked as `PASS` or `DROP`.
+The gatekeeper uses a four-level radix trie over the 32-bit IPv4 address space. Each IP is decomposed into four bytes, descending through pointer levels to a BitVector leaf. Lookup traverses exactly four pointer dereferences plus one bit read—O(1) with a small constant.
 
-### 4. Scheduler (Heap)
+### 4. Session Manager (Splay Tree)
+Tracks active flows using a 5-tuple key. The splay tree moves the most recently accessed sessions to the root, optimizing performance for dominant flows (e.g., streaming or file transfers) to amortized $O(1)$.
+
+### 5. Scheduler (Heap)
 The Max Heap acts as the final arbiter, reordering the passed packets so that the highest priority traffic is processed before lower-priority data.
 
 ---

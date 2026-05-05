@@ -43,7 +43,7 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header, const u_char
     uint32_t src_ip = ntohl(ip_hdr->ip_src.s_addr); // converts 32-bit IP address
     uint32_t dst_ip = ntohl(ip_hdr->ip_dst.s_addr);
     int protocol = ip_hdr->ip_p;
-    int packet_size = header->len;  /* Total packet length */
+    int packet_size = ntohs(ip_hdr->ip_len);  /* IP-layer total length */
 
     /* Determine priority
         - TCP packets to port 80/443 get higher priority (8)
@@ -51,15 +51,21 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header, const u_char
         - Others get default priority (5)
     */
     int priority = 5;  /* Default */
+    uint16_t src_port = 0;
+    uint16_t dst_port = 0;
 
     if (protocol == IPPROTO_TCP) {
         struct tcphdr *tcp_hdr = (struct tcphdr *)((u_char *)ip_hdr + (ip_hdr->ip_hl * 4));
-        if (ntohs(tcp_hdr->th_dport) == 80 || ntohs(tcp_hdr->th_dport) == 443) {
+        src_port = ntohs(tcp_hdr->th_sport);
+        dst_port = ntohs(tcp_hdr->th_dport);
+        if (dst_port == 80 || dst_port == 443) {
             priority = 8;  /* HTTP/HTTPS higher priority */
         }
     } else if (protocol == IPPROTO_UDP) {
         struct udphdr *udp_hdr = (struct udphdr *)((u_char *)ip_hdr + (ip_hdr->ip_hl * 4));
-        if (ntohs(udp_hdr->uh_dport) == 53) {
+        src_port = ntohs(udp_hdr->uh_sport);
+        dst_port = ntohs(udp_hdr->uh_dport);
+        if (dst_port == 53) {
             priority = 9;  /* DNS high priority */
         }
     }
@@ -68,6 +74,8 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header, const u_char
     Packet pkt = {
         .src_ip = src_ip,
         .dest_ip = dst_ip,
+        .src_port = src_port,
+        .dst_port = dst_port,
         .protocol = protocol,
         .size = packet_size,
         .priority = priority

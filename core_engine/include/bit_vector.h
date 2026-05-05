@@ -28,7 +28,7 @@ BitVector *bv_create(uint32_t capacity);
 
  // bv_destroy — Free all memory associated with a BitVector.
 
-// void bv_destroy(BitVector *bv);
+void bv_destroy(BitVector *bv);
 
  // bv_set     — Mark bit `index` as 1 (IP is blacklisted).
 
@@ -36,7 +36,7 @@ void bv_set(BitVector *bv, uint32_t index);
 
  // bv_clear   — Mark bit `index` as 0 (remove from blacklist).
 
-// void bv_clear(BitVector *bv, uint32_t index);
+void bv_clear(BitVector *bv, uint32_t index);
 
  // bv_contains — Returns 1 if bit `index` is set, 0 otherwise. O(1).
 
@@ -44,6 +44,6 @@ int bv_contains(const BitVector *bv, uint32_t index);
 
  // bv_reset   — Set all bits to 0 (clear the entire blacklist).
  
-// void bv_reset(BitVector *bv);
+void bv_reset(BitVector *bv);
 
 #endif /* BIT_VECTOR_H */

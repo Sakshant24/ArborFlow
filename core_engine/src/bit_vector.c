@@ -1,5 +1,6 @@
 #include "../include/bit_vector.h"
 #include <stdio.h>
+#include <string.h>
 
 
 BitVector *bv_create(uint32_t capacity) {
@@ -19,28 +20,29 @@ BitVector *bv_create(uint32_t capacity) {
     return bv;
 }
 
-// void bv_destroy(BitVector *bv) {
-//     if (!bv) return;
-//     free(bv->words);
-//     free(bv);
-// }
+void bv_destroy(BitVector *bv) {
+    if (!bv) return;
+    free(bv->words);
+    free(bv);
+}
 
 void bv_set(BitVector *bv, uint32_t index) {
     if (!bv || index >= bv->capacity) return;
     bv->words[index >> BV_WORD_SHIFT] |= (1ULL << (index & BV_WORD_MASK));
 }
 
-// void bv_clear(BitVector *bv, uint32_t index) {
-//     if (!bv || index >= bv->capacity) return;
-//     bv->words[index >> BV_WORD_SHIFT] &= ~(1ULL << (index & BV_WORD_MASK));
-// }
+void bv_clear(BitVector *bv, uint32_t index) {
+    if (!bv) return;
+    if (index >= bv->capacity) return;
+    bv->words[index >> BV_WORD_SHIFT] &= ~(1ULL << (index & BV_WORD_MASK));
+}
 
 int bv_contains(const BitVector *bv, uint32_t index) {
     if (!bv || index >= bv->capacity) return 0;
     return (bv->words[index >> BV_WORD_SHIFT] >> (index & BV_WORD_MASK)) & 1;
 }
 
-// void bv_reset(BitVector *bv) {
-//     if (!bv) return;
-//     memset(bv->words, 0, bv->num_words * sizeof(uint64_t));
-// }
+void bv_reset(BitVector *bv) {
+    if (!bv) return;
+    memset(bv->words, 0, bv->num_words * sizeof(uint64_t));
+}

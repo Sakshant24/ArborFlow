@@ -1,9 +1,9 @@
-﻿**ArborFlow**
+**ArborFlow**
 
 *High-Performance Network Processing Engine*
 
 # **Project Overview**
-ArborFlow is a real-time network processing and security engine built in C. It integrates network-level packet capture via libpcap with Bit Vectors, van Emde Boas Trees, Concurrent Queues, and Heaps to process live traffic with high performance.
+ArborFlow is a real-time network processing and security engine built in C. It integrates network-level packet capture via libpcap with Bit Vectors, IpTries, Splay Trees, Concurrent Queues, and Heaps to process live traffic with high performance.
 
 ArborFlow simulates a mini firewall and traffic scheduler system. It captures real network packets from the system interface, filters malicious or suspicious IP addresses using advanced data structures, schedules packets based on priority using a heap, and processes them in real-time.
 
@@ -151,9 +151,10 @@ When capture\_stop is called, it sets a flag, calls pcap\_breakloop to unblock p
 |1|Capture Engine (libpcap)|Captures raw packets from the network interface|
 |2|Packet Parser|Extracts IP addresses, protocol, port numbers, and size|
 |3|Concurrent Queue|Lock-free buffer between capture thread and processing thread|
-|4|Gatekeeper|Filters malicious IPs using Bit Vector and vEB Tree|
-|5|Scheduler (Max Heap)|Orders packets by priority for processing|
-|6|Process / Output|Handles the packet — logs, forwards, or drops|
+|4|Gatekeeper|Filters malicious IPs using a 4-Level IpTrie|
+|5|Session Manager|Tracks active flows using a Splay Tree|
+|6|Scheduler (Max Heap)|Orders packets by priority for processing|
+|7|Process / Output|Handles the packet — logs, forwards, or drops|
 
 
 # **Core Data Structures**
@@ -162,10 +163,9 @@ When capture\_stop is called, it sets a flag, calls pcap\_breakloop to unblock p
 | :- | :- | :- |
 |Capture Engine|Networking (libpcap), OS threads|—|
 |Concurrent Queue|Lock-Free SPSC Ring Buffer|O(1) enqueue and dequeue|
-|Gatekeeper — Layer 1|Bit Vector|O(1) prefix lookup|
-|Gatekeeper — Layer 2|van Emde Boas Tree|O(log log U) exact IP match|
+|Gatekeeper|4-Level IpTrie|O(1) exact match|
 |Scheduler|Max Heap (Priority Queue)|O(log n) insert, O(1) peek|
-|Session Manager|Splay Tree (optional)|O(log n) amortized|
+|Session Manager|Splay Tree|Amortized O(1) for hot sessions|
 
 
 # **Priority Assignment**
@@ -181,17 +181,20 @@ DNS receives the highest priority because unresolved DNS queries block all depen
 
 
 # **Gatekeeper — Firewall Logic**
-The Gatekeeper module sits between the concurrent queue and the scheduler. Every packet dequeued from the capture queue passes through two filtering layers before it is admitted to the scheduler.
+The Gatekeeper module uses a four-level radix trie (IpTrie) over the 32-bit IPv4 address space.
 
-## **Layer 1 — Bit Vector (O(1) prefix filtering)**
-A bit vector is an array of bits indexed by value. For IP filtering, each bit corresponds to a possible value in an IP address field (a subnet prefix, for example). Checking whether a prefix is blocked requires only a single memory read and a bitwise test — O(1) regardless of how many prefixes are blocked.
+## **4-Level IpTrie (O(1) exact lookup)**
+Each IP address is decomposed into four bytes. The trie descends through three pointer levels (IpTrie → NodeL2 → NodeL3) to a BitVector leaf that represents the final byte.
 
-This layer acts as a fast pre-filter. If a packet's source IP matches a blocked prefix, it is dropped immediately without consulting the more expensive vEB Tree.
+This design provides exactly four pointer dereferences and one bitwise test for any lookup, ensuring deterministic O(1) performance regardless of the number of blocked IPs. It is highly cache-efficient and eliminates the need for expensive logarithmic searches.
 
-## **Layer 2 — van Emde Boas Tree (O(log log U) exact matching)**
-The van Emde Boas Tree provides exact IP address lookup. Unlike a hash table, it supports predecessor and successor queries in O(log log U) time, where U is the universe size (2^32 for IPv4). It is particularly well-suited to dense sets of blocked IPs where spatial locality matters.
+# **Session Manager — Splay Tree**
+The Session Manager tracks active flows using a 5-tuple key (Source IP, Destination IP, Source Port, Destination Port, Protocol).
 
-Only packets that pass the Bit Vector layer reach the vEB Tree check. If the exact source IP is found in the blocked set, the packet is dropped. Otherwise it is admitted to the scheduler.
+## **Self-Adjusting Splay Tree**
+A Splay Tree is used to store session metadata. When a packet from an existing session is received, the splay operation moves that session's node to the root of the tree.
+
+For dominant network flows (such as file transfers or streaming), this ensures that subsequent packets from the same session are found at the root, leading to amortized O(1) access time. This self-adjusting property allows the engine to adapt to changing traffic patterns in real-time.
 
 
 # **Project Structure**
@@ -232,8 +235,9 @@ Each line represents one packet that passed the Gatekeeper and was processed by 
 |**Component**|**Contributor Focus**|
 | :- | :- |
 |Capture Engine|Networking, libpcap integration, OS threading|
-|Gatekeeper|Advanced Trees — Bit Vector and van Emde Boas|
+|Gatekeeper|IpTrie implementation|
 |Scheduler|Heap implementation, priority queue|
+|Session Manager|Splay Tree tracking|
 |Concurrent Queue|Lock-free data structures, atomic operations|
 |ML / Visualization|Python (optional extension)|
 

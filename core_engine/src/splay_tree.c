@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 typedef struct {
     SessionKey *items;
@@ -43,7 +44,7 @@ static SessionNode *rotate_left(SessionNode *node) {
     return pivot;
 }
 
-static SessionNode *splay(SessionNode *root, SessionKey key) {
+static SessionNode *splay(SessionNode *root, SessionKey key, int *depth) {
     SessionNode header;
     SessionNode *left_tree_max;
     SessionNode *right_tree_min;
@@ -55,6 +56,7 @@ static SessionNode *splay(SessionNode *root, SessionKey key) {
     right_tree_min = &header;
 
     while (1) {
+        if (depth) (*depth)++;
         int cmp = session_key_cmp(key, root->key);
 
         if (cmp < 0) {
@@ -166,8 +168,18 @@ SessionNode *sm_touch(
         return manager->root;
     }
 
-    manager->root = splay(manager->root, key);
+    int depth = 0;
+    manager->root = splay(manager->root, key, &depth);
     cmp = session_key_cmp(key, manager->root->key);
+
+#ifdef SESSION_DEBUG
+    printf("[Session] %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u  depth=%d  count=%llu\n",
+        (key.src_ip >> 24)&0xFF, (key.src_ip >> 16)&0xFF,
+        (key.src_ip >> 8)&0xFF, key.src_ip&0xFF, key.src_port,
+        (key.dst_ip >> 24)&0xFF, (key.dst_ip >> 16)&0xFF,
+        (key.dst_ip >> 8)&0xFF, key.dst_ip&0xFF, key.dst_port,
+        depth, (unsigned long long)manager->root->packet_count);
+#endif
 
     if (cmp == 0) {
         manager->root->packet_count++;
@@ -200,7 +212,7 @@ int sm_contains(SessionManager *manager, SessionKey key) {
 
     if (!manager || !manager->root) return 0;
 
-    manager->root = splay(manager->root, key);
+    manager->root = splay(manager->root, key, NULL);
     cmp = session_key_cmp(key, manager->root->key);
 
     return (cmp == 0);
@@ -211,7 +223,7 @@ int sm_remove(SessionManager *manager, SessionKey key) {
 
     if (!manager || !manager->root) return 0;
 
-    manager->root = splay(manager->root, key);
+    manager->root = splay(manager->root, key, NULL);
     if (session_key_cmp(key, manager->root->key) != 0) {
         return 0;
     }
@@ -221,7 +233,7 @@ int sm_remove(SessionManager *manager, SessionKey key) {
     if (!manager->root->left) {
         manager->root = manager->root->right;
     } else {
-        manager->root = splay(manager->root->left, key);
+        manager->root = splay(manager->root->left, key, NULL);
         manager->root->right = to_delete->right;
     }
 

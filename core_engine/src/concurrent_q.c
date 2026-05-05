@@ -32,11 +32,11 @@ int cq_enqueue(ConcurrentQueue *q, Packet p) {
     // to load atomic value we use atomic load
     // we use unsigned int for head and tail for future proofing, if in future we use a larger queue size, it should not overflow
     // but for now its 1024, so unsigned int doesn't matter
-    unsigned int tail = atomic_load(&q->tail);
+    unsigned int tail = atomic_load_explicit(&q->tail, memory_order_relaxed);
     unsigned int next_tail = (tail + 1) % Q_SIZE;
 
     /* Check if queue is full */
-    if (next_tail == atomic_load(&q->head)) {
+    if (next_tail == atomic_load_explicit(&q->head, memory_order_acquire)) {
         return 0;  /* Full */
     }
 
@@ -44,15 +44,15 @@ int cq_enqueue(ConcurrentQueue *q, Packet p) {
     q->buffer[tail] = p;
 
     /* Update tail with atomic_store, as tail is atomic int */
-    atomic_store(&q->tail, next_tail);
+    atomic_store_explicit(&q->tail, next_tail, memory_order_release);
     return 1;
 }
 
 int cq_dequeue(ConcurrentQueue *q, Packet *p) {
-    unsigned int head = atomic_load(&q->head);
+    unsigned int head = atomic_load_explicit(&q->head, memory_order_relaxed);
 
     /* Check if queue is empty */
-    if (head == atomic_load(&q->tail)) {
+    if (head == atomic_load_explicit(&q->tail, memory_order_acquire)) {
         return 0;  /* Empty */
     }
 
@@ -60,7 +60,7 @@ int cq_dequeue(ConcurrentQueue *q, Packet *p) {
     *p = q->buffer[head];
 
     /* Update head atomically */
-    atomic_store(&q->head, (head + 1) % Q_SIZE);
+    atomic_store_explicit(&q->head, (head + 1) % Q_SIZE, memory_order_release);
     return 1;
 }
 

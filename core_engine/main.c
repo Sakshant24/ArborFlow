@@ -10,6 +10,7 @@
 #include "../include/concurrent_q.h"
 #include "../include/gatekeeper.h"
 #include "../scheduler/scheduler.h"  
+#include <time.h>
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -36,6 +37,11 @@ int main(int argc, char *argv[]) {
     if (gk_init(&gk) != 0) {
         printf("Gatekeeper init failed\n");
         return 1;
+    }
+
+    /* LOAD BLACKLIST */
+    if (gk_load_blacklist(&gk, "../blacklist.csv") < 0) {
+        printf("Warning: Failed to load blacklist\n");
     }
 
     /* INIT SCHEDULER */
