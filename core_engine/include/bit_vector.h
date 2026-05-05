@@ -28,7 +28,7 @@ BitVector *bv_create(uint32_t capacity);
 
  // bv_destroy — Free all memory associated with a BitVector.
 
-// void bv_destroy(BitVector *bv);
+void bv_destroy(BitVector *bv);
 
  // bv_set     — Mark bit `index` as 1 (IP is blacklisted).
 

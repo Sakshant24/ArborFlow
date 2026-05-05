@@ -25,6 +25,12 @@ BitVector *bv_create(uint32_t capacity) {
 //     free(bv);
 // }
 
+void bv_destroy(BitVector *bv) {
+    if (!bv) return;
+    free(bv->words);
+    free(bv);
+}
+
 void bv_set(BitVector *bv, uint32_t index) {
     if (!bv || index >= bv->capacity) return;
     bv->words[index >> BV_WORD_SHIFT] |= (1ULL << (index & BV_WORD_MASK));
