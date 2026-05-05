@@ -8,22 +8,30 @@
  * Assumes single producer and single consumer.
  */
 
+ // Returns concurrent queue struct
 ConcurrentQueue *cq_create(void) {
     ConcurrentQueue *q = (ConcurrentQueue *)malloc(sizeof(ConcurrentQueue));
     if (!q) return NULL;
 
     memset(q, 0, sizeof(ConcurrentQueue));
-    atomic_init(&q->head, 0);
+    // atomic init is used to initialize the atomic variables head and tail to 0. 
+    // This ensures that both indices start at the beginning of the buffer. 
+    atomic_init(&q->head, 0); 
     atomic_init(&q->tail, 0);
 
     return q;
 }
 
+// frees the memory allocated for the concurrent queue struct
 void cq_destroy(ConcurrentQueue *q) {
     if (q) free(q);
 }
 
+
 int cq_enqueue(ConcurrentQueue *q, Packet p) {
+    // to load atomic value we use atomic load
+    // we use unsigned int for head and tail for future proofing, if in future we use a larger queue size, it should not overflow
+    // but for now its 1024, so unsigned int doesn't matter
     unsigned int tail = atomic_load(&q->tail);
     unsigned int next_tail = (tail + 1) % Q_SIZE;
 
@@ -35,7 +43,7 @@ int cq_enqueue(ConcurrentQueue *q, Packet p) {
     /* Store packet */
     q->buffer[tail] = p;
 
-    /* Update tail atomically */
+    /* Update tail with atomic_store, as tail is atomic int */
     atomic_store(&q->tail, next_tail);
     return 1;
 }
