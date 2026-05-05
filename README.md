@@ -1,12 +1,12 @@
-# ArborFlow: Python Network Attack Simulator
+# ArborFlow: High-Performance Network Engine
 
-ArborFlow is a network security simulation tool built in **Python**. It allows you to simulate network traffic and test firewall filtering logic by processing large datasets of synthetic packets.
+ArborFlow is a real-time network processing and security engine built in **C**. It utilizes **Python** as a utility for generating large-scale synthetic datasets used for offline simulation and testing.
 
 ## 🚀 Key Features
-- **Attack Simulation**: Process thousands of packets from `packets.csv` to see how a firewall reacts.
-- **Instant Filtering**: High-speed IP lookup using Python's efficient hashing sets.
-- **Customizable Traffic**: Use the provided scripts to generate custom packet datasets.
-- **Detailed Analytics**: Get a full report on dropped vs. passed traffic.
+- **C-Powered Engine**: High-speed filtering using IpTries and session tracking via Splay Trees.
+- **Python Data Tools**: Automated generation of thousands of network packets in `packets.csv`.
+- **Clean Structure**: Modular design with separate directories for code, data, and scripts.
+- **Offline Simulation**: Test your firewall logic against large CSV datasets without live network access.
 
 ---
 

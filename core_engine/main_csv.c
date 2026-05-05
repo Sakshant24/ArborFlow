@@ -7,10 +7,16 @@
 #include <stdint.h>
 #include <time.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
 #include "include/gatekeeper.h"
 #include "scheduler/scheduler.h"
 
-#define PACKETS_FILE "../data/packets.csv"
+#define PACKETS_FILE "../data/test_packets.csv"
 #define BLACKLIST_FILE "../data/blacklist.csv"
 
 typedef struct {
@@ -156,7 +162,11 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        usleep(500000); // 0.5 second delay
+#ifdef _WIN32
+        Sleep(500); // 0.5 second delay
+#else
+        usleep(500000); 
+#endif
     }
 
     printf("\n[STATS] Dropped: %d, Passed: %d\n", dropped, passed);
