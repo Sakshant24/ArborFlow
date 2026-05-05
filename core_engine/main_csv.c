@@ -14,10 +14,21 @@
 #endif
 
 #include "include/gatekeeper.h"
+#include "include/concurrent_q.h"
 #include "scheduler/scheduler.h"
 
 #define PACKETS_FILE "../data/test_packets.csv"
 #define BLACKLIST_FILE "../data/blacklist.csv"
+
+/*
+ * DESIGN NOTE - Concurrent Queue:
+ * - Queue decouples filtering and scheduling
+ * - Pipeline supports buffering (1024 slots)
+ * - Architecture is concurrency-ready (for live capture mode)
+ * 
+ * In dataset mode: Sequential enqueue→dequeue (demonstrates API)
+ * In live mode: Capture thread enqueues, main thread dequeues (true concurrency)
+ */
 
 typedef struct {
     char dest_ip[16];
@@ -100,12 +111,20 @@ int main(int argc, char *argv[]) {
     }
     printf("[SUCCESS] Loaded %d blacklisted IPs\n\n", loaded);
 
-    printf("[4] Initializing Scheduler...\n");
+    printf("[4] Initializing Concurrent Queue...\n");
+    ConcurrentQueue *queue = cq_create();
+    if (!queue) {
+        printf("Queue init failed\n");
+        return 1;
+    }
+    printf("[SUCCESS] Queue initialized (capacity: %d slots)\n\n", Q_SIZE);
+
+    printf("[5] Initializing Scheduler...\n");
     Scheduler scheduler;
     scheduler_init(&scheduler);
 
     printf("\n============================================================\n");
-    printf("   🚀 ArborFlow Running... (Press Ctrl+C to stop)\n");
+    printf("   ArborFlow Running... (Press Ctrl+C to stop)\n");
     printf("============================================================\n\n");
 
     int idx = 0;
@@ -136,29 +155,36 @@ int main(int argc, char *argv[]) {
                 .priority = row->priority
             };
 
-            scheduler_insert(&scheduler, pkt);
+            // Enqueue packet (demonstrates lock-free queue)
+            cq_enqueue(queue, pkt);
             passed++;
 
+            // Dequeue and process
             Packet out_pkt;
-            if (!scheduler_empty(&scheduler)) {
-                scheduler_extract(&scheduler, &out_pkt);
+            if (cq_dequeue(queue, &out_pkt)) {
+                scheduler_insert(&scheduler, out_pkt);
 
-                printf("[PROCESS] ");
-                printf("%u.%u.%u.%u -> %u.%u.%u.%u ",
-                    (out_pkt.src_ip >> 24) & 0xFF,
-                    (out_pkt.src_ip >> 16) & 0xFF,
-                    (out_pkt.src_ip >> 8) & 0xFF,
-                    out_pkt.src_ip & 0xFF,
-                    (out_pkt.dest_ip >> 24) & 0xFF,
-                    (out_pkt.dest_ip >> 16) & 0xFF,
-                    (out_pkt.dest_ip >> 8) & 0xFF,
-                    out_pkt.dest_ip & 0xFF);
-                
-                printf("Proto:%s Port:%d Size:%d Priority:%d\n",
-                    get_protocol_name(out_pkt.protocol),
-                    out_pkt.dst_port,
-                    out_pkt.size,
-                    out_pkt.priority);
+                Packet sched_pkt;
+                if (!scheduler_empty(&scheduler)) {
+                    scheduler_extract(&scheduler, &sched_pkt);
+
+                    printf("[PROCESS] ");
+                    printf("%u.%u.%u.%u -> %u.%u.%u.%u ",
+                        (sched_pkt.src_ip >> 24) & 0xFF,
+                        (sched_pkt.src_ip >> 16) & 0xFF,
+                        (sched_pkt.src_ip >> 8) & 0xFF,
+                        sched_pkt.src_ip & 0xFF,
+                        (sched_pkt.dest_ip >> 24) & 0xFF,
+                        (sched_pkt.dest_ip >> 16) & 0xFF,
+                        (sched_pkt.dest_ip >> 8) & 0xFF,
+                        sched_pkt.dest_ip & 0xFF);
+                    
+                    printf("Proto:%s Port:%d Size:%d Priority:%d\n",
+                        get_protocol_name(sched_pkt.protocol),
+                        sched_pkt.dst_port,
+                        sched_pkt.size,
+                        sched_pkt.priority);
+                }
             }
         }
 
@@ -172,6 +198,7 @@ int main(int argc, char *argv[]) {
     printf("\n[STATS] Dropped: %d, Passed: %d\n", dropped, passed);
 
     gk_destroy(&gk);
+    cq_destroy(queue);
     free(packets);
 
     return 0;
