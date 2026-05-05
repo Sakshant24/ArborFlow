@@ -1,0 +1,3 @@
+Blocklist.de is a free, community-driven threat intelligence service that aggregates IP addresses associated with malicious network activity. The data is crowdsourced from thousands of participating server administrators worldwide who use Intrusion Detection Systems (IDS), primarily Fail2Ban, to detect and report attacks on their infrastructure.
+
+https://www.blocklist.de/downloads/

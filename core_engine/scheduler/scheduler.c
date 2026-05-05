@@ -66,18 +66,3 @@ Packet* scheduler_peek(Scheduler *s){
 int scheduler_empty(Scheduler *s){
     return s->size == 0;
 }
-int main(){ //test program
-    Scheduler s;
-    scheduler_init(&s);
-    Packet p1 = {1,2,6,100,10};
-    Packet p2 = {1,2,6,100,5};
-    Packet p3 = {1,2,6,100,8};
-    scheduler_insert(&s,p1);
-    scheduler_insert(&s,p2);
-    scheduler_insert(&s,p3);
-    Packet p;
-    while(!scheduler_empty(&s)){
-        scheduler_extract(&s,&p);
-        printf("Priority served: %d\n",p.priority);
-    }
-}
