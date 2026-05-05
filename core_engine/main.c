@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* LOAD BLACKLIST */
-    if (gk_load_blacklist(&gk, "../blacklist.csv") < 0) {
+    if (gk_load_blacklist(&gk, "../data/blacklist.csv") < 0) {
         printf("Warning: Failed to load blacklist\n");
     }
 

@@ -24,8 +24,8 @@ import os
 # Set seed for reproducibility
 random.seed(42)
 
-BLACKLIST_FILE = "/Users/prathmesh/ArborFlow_ADS_CP/blacklist.csv"
-OUTPUT_FILE = "/Users/prathmesh/ArborFlow_ADS_CP/packets.csv"
+BLACKLIST_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/blacklist.csv")
+OUTPUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/packets.csv")
 
 # Protocol constants
 TCP = 6

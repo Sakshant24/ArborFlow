@@ -1,0 +1,12 @@
+# Compiled Object files
+*.o
+
+# Executables
+*.exe
+arborflow
+capture_test
+test_csv
+
+# Editor/OS files
+.vscode/
+.DS_Store
