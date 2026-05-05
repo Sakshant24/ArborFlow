@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -O2 -std=c11 -Iinclude -Ischeduler
-LDFLAGS = -lpcap -pthread
+LDFLAGS = -pthread
 
 SRC = src/bit_vector.c \
       src/ip_trie.c \
